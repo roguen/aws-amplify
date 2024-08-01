@@ -1,0 +1,29 @@
+import time
+import botocore.exceptions
+
+def download_file(s3, bucket_name, key, output_dir):
+    num_retries = 0
+    max_retries = 5
+    backoff_factor = 2
+
+    while num_retries < max_retries:
+        try:
+            s3.Bucket(bucket_name).download_file(key, os.path.join(output_dir, os.path.basename(key)))
+            return
+        except botocore.exceptions.ClientError as e:
+            if e.response['Error']['Code'] == "404":
+                print(f"The object {key} does not exist.")
+                return
+            elif e.response['Error']['Code'] == '429':
+                # Handle 429 Too Many Requests response
+                print(f"Rate limit exceeded for {key}, retrying ({num_retries}/{max_retries})")
+                backoff_time = backoff_factor ** num_retries
+                time.sleep(backoff_time)
+                num_retries += 1
+            elif e.response['Error']['Code'] in ['AccessDeniedException', 'UnauthorizedOperation']:
+                raise e
+            else:
+                num_retries += 1
+                print(f"Retrying download for {key} ({num_retries}/{max_retries})")
+                time.sleep(backoff_factor ** num_retries)
+    print(f"Failed to download {key} after {max_retries} retries.")

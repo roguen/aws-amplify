@@ -1,0 +1,30 @@
+import os
+
+# Create a CloudWatch log group
+log_group = aws_cloudwatch_log_group.AwsCloudwatchLogGroup(
+    self,
+    "amplify-log-group",
+    name="/aws/amplify/apps/my-amplify-app",
+    retention_in_days=90,
+)
+
+# Create a CloudWatch log stream
+log_stream = aws_cloudwatch_log_stream.AwsCloudwatchLogStream(
+    self,
+    "amplify-log-stream",
+    log_group_name=log_group.name,
+    name="my-amplify-app-logs",
+)
+
+# Attach the log group and stream to the Amplify app
+self.amplify = AmplifyApp(
+    self,
+    id_="amplify",
+    logging_config={
+        "cloudwatch_logs": {
+            "group_name": log_group.name,
+            "stream_name": log_stream.name,
+        }
+    },
+    # Your existing AmplifyApp configuration
+)
